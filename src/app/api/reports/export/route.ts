@@ -29,9 +29,9 @@ export async function GET(request: NextRequest) {
 
   const headers = ['ID', 'Document Type', 'Entity', 'Entity Type', 'Status', 'Issue Date', 'Expiry Date', 'File Name', 'Notes', 'Updated At']
   const rows = (documents || []).map(doc => {
-    const docType = doc.document_type as Record<string, string> | null
-    const person = doc.person as Record<string, string> | null
-    const vehicle = doc.vehicle as Record<string, string> | null
+    const docType = (doc.document_type as unknown) as Record<string, string> | null
+    const person = (doc.person as unknown) as Record<string, string> | null
+    const vehicle = (doc.vehicle as unknown) as Record<string, string> | null
     return [
       doc.id,
       docType?.name || '',

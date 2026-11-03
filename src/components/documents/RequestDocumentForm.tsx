@@ -24,17 +24,22 @@ interface Props {
   companyId: string
   documentTypes: Record<string, unknown>[]
   people: Record<string, unknown>[]
+  vehicles?: Record<string, unknown>[]
+  preselectedPersonId?: string
   onSuccess: () => void
   onCancel: () => void
 }
 
-export function RequestDocumentForm({ companyId, documentTypes, people, onSuccess, onCancel }: Props) {
+export function RequestDocumentForm({ companyId, documentTypes, people, vehicles: _vehicles, preselectedPersonId, onSuccess, onCancel }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [sent, setSent] = useState(false)
   const [recipientName, setRecipientName] = useState('')
 
   const { handleSubmit, setValue, watch, register, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
+    defaultValues: {
+      person_id: preselectedPersonId || '',
+    }
   })
 
   const personId = watch('person_id')
