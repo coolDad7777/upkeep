@@ -1,0 +1,82 @@
+services:
+  # Main web application
+  - type: web
+    name: crewcompliant
+    runtime: node
+    plan: starter
+    region: ohio
+    buildCommand: npm ci && npm run build
+    startCommand: node .next/standalone/server.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: NEXT_PUBLIC_APP_URL
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: STRIPE_PRICE_STARTER_MONTHLY
+        sync: false
+      - key: STRIPE_PRICE_STARTER_ANNUAL
+        sync: false
+      - key: STRIPE_PRICE_GROWTH_MONTHLY
+        sync: false
+      - key: STRIPE_PRICE_GROWTH_ANNUAL
+        sync: false
+      - key: STRIPE_PRICE_PRO_MONTHLY
+        sync: false
+      - key: STRIPE_PRICE_PRO_ANNUAL
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: CRON_SECRET
+        sync: false
+
+  # Reminder cron job (runs daily at 8am UTC)
+  - type: cron
+    name: crewcompliant-reminders
+    runtime: node
+    plan: starter
+    region: ohio
+    schedule: "0 8 * * *"
+    buildCommand: npm ci && npm run build
+    startCommand: node -e "
+      const fetch = require('node:http');
+      const options = {
+        hostname: process.env.APP_HOST,
+        port: 443,
+        path: '/api/reminders/send',
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + process.env.CRON_SECRET,
+          'Content-Type': 'application/json'
+        }
+      };
+      const req = fetch.request(options, res => {
+        let data = '';
+        res.on('data', d => data += d);
+        res.on('end', () => {
+          console.log('Reminders result:', data);
+          process.exit(res.statusCode === 200 ? 0 : 1);
+        });
+      });
+      req.on('error', e => { console.error(e); process.exit(1); });
+      req.end();
+    "
+    envVars:
+      - key: APP_HOST
+        sync: false
+      - key: CRON_SECRET
+        sync: false
