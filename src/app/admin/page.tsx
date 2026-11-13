@@ -1,10 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { AdminContent } from '@/components/admin/AdminContent'
+import { isPlatformAdmin } from '@/lib/authz'
 
 export const metadata = { title: 'Admin — CrewCompliant' }
-
-const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '').split(',').map(e => e.trim()).filter(Boolean)
 
 export default async function AdminPage() {
   const supabase = await createClient()
@@ -12,9 +11,7 @@ export default async function AdminPage() {
 
   if (!user) redirect('/login')
 
-  // Check admin status
-  const isAdmin = ADMIN_EMAILS.length === 0 || ADMIN_EMAILS.includes(user.email!)
-  if (!isAdmin) redirect('/dashboard')
+  if (!isPlatformAdmin(process.env.ADMIN_EMAILS, user.email)) redirect('/dashboard')
 
   // Fetch all companies
   const { data: companies } = await supabase

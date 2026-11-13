@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
-
-const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '').split(',').map(e => e.trim()).filter(Boolean)
+import { isPlatformAdmin } from '@/lib/authz'
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const isAdmin = ADMIN_EMAILS.length === 0 || ADMIN_EMAILS.includes(user.email!)
-  if (!isAdmin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!isPlatformAdmin(process.env.ADMIN_EMAILS, user.email)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
 
   const { company_id, suspend } = await request.json()
 

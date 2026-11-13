@@ -43,6 +43,8 @@ services:
         sync: false
       - key: CRON_SECRET
         sync: false
+      - key: ADMIN_EMAILS
+        sync: false
 
   # Reminder cron job (runs daily at 8am UTC)
   - type: cron
@@ -53,7 +55,7 @@ services:
     schedule: "0 8 * * *"
     buildCommand: npm ci && npm run build
     startCommand: node -e "
-      const fetch = require('node:http');
+      const https = require('node:https');
       const options = {
         hostname: process.env.APP_HOST,
         port: 443,
@@ -64,7 +66,7 @@ services:
           'Content-Type': 'application/json'
         }
       };
-      const req = fetch.request(options, res => {
+      const req = https.request(options, res => {
         let data = '';
         res.on('data', d => data += d);
         res.on('end', () => {

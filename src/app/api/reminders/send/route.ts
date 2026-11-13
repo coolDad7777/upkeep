@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { Resend } from 'resend'
+import { isCronRequestAuthorized } from '@/lib/authz'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
@@ -8,11 +9,12 @@ const resend = new Resend(process.env.RESEND_API_KEY)
 // It should be secured with a secret token
 
 export async function POST(request: NextRequest) {
-  const authHeader = request.headers.get('authorization')
-  const expectedToken = process.env.CRON_SECRET
-
-  if (expectedToken && authHeader !== `Bearer ${expectedToken}`) {
+  if (!isCronRequestAuthorized(process.env.CRON_SECRET, request.headers.get('authorization'))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  if (!process.env.RESEND_API_KEY) {
+    return NextResponse.json({ error: 'Email is not configured' }, { status: 500 })
   }
 
   const supabase = await createServiceClient()
@@ -115,8 +117,7 @@ export async function POST(request: NextRequest) {
 
         const urgencyColor = diffDays < 0 ? '#dc2626' : diffDays <= 7 ? '#ea580c' : '#d97706'
 
-        if (process.env.RESEND_API_KEY) {
-          await resend.emails.send({
+        const { error: sendError } = await resend.emails.send({
             from: `CrewCompliant <reminders@crewcompliant.com>`,
             to: recipientEmail,
             subject,
@@ -150,15 +151,23 @@ export async function POST(request: NextRequest) {
                 </p>
               </div>
             `,
-          }).catch(console.error)
+        })
+
+        if (sendError) {
+          console.error('Reminder email failed:', sendError)
+          continue
         }
 
-        // Log the reminder
-        void supabase.from('reminder_logs').insert({
+        const { error: logError } = await supabase.from('reminder_logs').insert({
           document_id: doc.id,
           days_before: matchingDay,
           recipient_email: recipientEmail,
         })
+
+        if (logError) {
+          console.error('Reminder log failed:', logError)
+          continue
+        }
 
         emailsSent++
       }
