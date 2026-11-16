@@ -1,5 +1,18 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import {
+  decideAccountAccess,
+  getAccountBlockReason,
+  isListedPlatformAdmin,
+  type CompanyAccess,
+} from '@/lib/account-access'
+
+function withSessionCookies(source: NextResponse, target: NextResponse) {
+  for (const cookie of source.headers.getSetCookie()) {
+    target.headers.append('set-cookie', cookie)
+  }
+  return target
+}
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
@@ -41,6 +54,42 @@ export async function updateSession(request: NextRequest) {
     const url = request.nextUrl.clone()
     url.pathname = '/dashboard'
     return NextResponse.redirect(url)
+  }
+
+  // Canceled, paused, suspended, and expired-trial companies keep a session,
+  // but the app never consulted those fields. Enforce the stop here so pages
+  // and API routes share one gate. Billing stays reachable so they can pay.
+  if (user && !isPublic && !isListedPlatformAdmin(process.env.ADMIN_EMAILS, user.email)) {
+    const { data: membership, error: membershipError } = await supabase
+      .from('company_members')
+      .select('companies(subscription_status, trial_ends_at, is_suspended)')
+      .eq('user_id', user.id)
+      .order('joined_at', { ascending: true })
+      .limit(1)
+      .maybeSingle()
+
+    if (!membershipError) {
+      const companyRelation = membership?.companies as CompanyAccess | CompanyAccess[] | null | undefined
+      const company = Array.isArray(companyRelation) ? companyRelation[0] : companyRelation
+      const decision = decideAccountAccess(pathname, getAccountBlockReason(company))
+
+      if (decision === 'api_denied') {
+        return withSessionCookies(
+          supabaseResponse,
+          NextResponse.json(
+            { error: 'This account cannot access the app until billing is updated.' },
+            { status: 402 },
+          ),
+        )
+      }
+
+      if (decision === 'redirect_billing') {
+        const url = request.nextUrl.clone()
+        url.pathname = '/billing'
+        url.search = ''
+        return withSessionCookies(supabaseResponse, NextResponse.redirect(url))
+      }
+    }
   }
 
   return supabaseResponse

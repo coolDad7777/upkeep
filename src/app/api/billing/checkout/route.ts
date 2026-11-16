@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { stripe, PLANS, PlanId } from '@/lib/stripe'
+import { shouldGrantCheckoutTrial } from '@/lib/account-access'
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
@@ -36,7 +37,7 @@ export async function POST(request: NextRequest) {
 
   const { data: company } = await supabase
     .from('companies')
-    .select('name, stripe_customer_id')
+    .select('name, stripe_customer_id, stripe_subscription_id, subscription_status, trial_ends_at')
     .eq('id', companyId)
     .single()
 
@@ -85,7 +86,7 @@ export async function POST(request: NextRequest) {
         company_id: companyId,
         plan_id: planId,
       },
-      trial_period_days: 14,
+      ...(shouldGrantCheckoutTrial(company) ? { trial_period_days: 14 } : {}),
     },
     allow_promotion_codes: true,
     metadata: {

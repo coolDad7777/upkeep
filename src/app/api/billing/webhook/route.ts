@@ -124,29 +124,15 @@ export async function POST(request: NextRequest) {
       break
     }
 
-    case 'invoice.payment_failed': {
-      const invoice = event.data.object as Stripe.Invoice
-      const companyId = await getCompanyIdFromCustomer(invoice.customer as string)
-      if (!companyId) break
-
-      await supabase.from('companies').update({
-        subscription_status: 'past_due',
-      }).eq('id', companyId)
-
+    case 'invoice.payment_failed':
+    case 'invoice.payment_succeeded':
+      // Subscription status is owned by customer.subscription.updated and
+      // customer.subscription.deleted. Writing it from invoice events races
+      // those handlers: Stripe retries invoice.payment_succeeded for days, so
+      // a paid invoice delivered after cancellation was marking the company
+      // active again and undoing the access gate. A $0 trial invoice can also
+      // land after checkout and flip a trialing company to active.
       break
-    }
-
-    case 'invoice.payment_succeeded': {
-      const invoice = event.data.object as Stripe.Invoice
-      const companyId = await getCompanyIdFromCustomer(invoice.customer as string)
-      if (!companyId) break
-
-      await supabase.from('companies').update({
-        subscription_status: 'active',
-      }).eq('id', companyId)
-
-      break
-    }
   }
 
   return NextResponse.json({ received: true })

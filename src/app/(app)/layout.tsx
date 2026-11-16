@@ -26,12 +26,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   const company = (Array.isArray(membership.companies) ? membership.companies[0] : membership.companies) as Record<string, unknown>
 
-  // Check if subscription is valid
-  const subStatus = company.subscription_status as string
-  if (['canceled', 'paused'].includes(subStatus)) {
-    // Allow access to billing page only
-  }
-
   const { data: profile } = await supabase
     .from('user_profiles')
     .select('full_name, avatar_url')

@@ -20,7 +20,7 @@ export default async function BillingPage() {
 
   const { data: company } = await supabase
     .from('companies')
-    .select('id, name, subscription_status, subscription_plan, trial_ends_at, stripe_customer_id')
+    .select('id, name, subscription_status, subscription_plan, trial_ends_at, stripe_customer_id, is_suspended')
     .eq('id', membership.company_id)
     .single()
 

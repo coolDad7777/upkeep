@@ -27,6 +27,7 @@ export function BillingContent({ company, role, userId }: Props) {
   const daysLeft = trialEnd ? Math.max(0, Math.ceil((trialEnd.getTime() - Date.now()) / 86400000)) : null
   const isTrialing = status === 'trialing'
   const isActive = status === 'active'
+  const isSuspended = Boolean(company.is_suspended)
 
   async function handleSubscribe(planId: PlanId) {
     setLoadingPlan(planId)
@@ -91,14 +92,20 @@ export function BillingContent({ company, role, userId }: Props) {
                 <Badge
                   variant="outline"
                   className={cn(
+                    isSuspended ? 'bg-red-50 text-red-700 border-red-200' :
                     isActive ? 'bg-green-50 text-green-700 border-green-200' :
                     isTrialing ? 'bg-blue-50 text-blue-700 border-blue-200' :
                     'bg-red-50 text-red-700 border-red-200'
                   )}
                 >
-                  {isActive ? 'Active' : isTrialing ? 'Trial' : status}
+                  {isSuspended ? 'Suspended' : isActive ? 'Active' : isTrialing ? 'Trial' : status}
                 </Badge>
               </div>
+              {isSuspended && (
+                <p className="text-sm text-red-700">
+                  This account is suspended. Updating billing will not restore access. Contact support.
+                </p>
+              )}
               {isTrialing && daysLeft !== null && (
                 <p className="text-sm text-gray-600">
                   {daysLeft === 0 ? 'Trial expired — upgrade to continue.' : `${daysLeft} day${daysLeft === 1 ? '' : 's'} remaining in your free trial.`}
@@ -110,7 +117,7 @@ export function BillingContent({ company, role, userId }: Props) {
                 </p>
               )}
             </div>
-            {isOwner && isActive && (
+            {isOwner && isActive && !isSuspended && (
               <Button
                 variant="outline"
                 onClick={handleManageBilling}
@@ -126,7 +133,7 @@ export function BillingContent({ company, role, userId }: Props) {
       </Card>
 
       {/* Plans */}
-      {(!isActive || isTrialing) && isOwner && (
+      {!isSuspended && (!isActive || isTrialing) && isOwner && (
         <>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-gray-900">Choose a plan</h2>
