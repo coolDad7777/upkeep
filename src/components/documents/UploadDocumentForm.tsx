@@ -118,14 +118,43 @@ export function UploadDocumentForm({ companyId, documentTypes, people, vehicles,
       notes: data.notes || null,
     }
 
-    const { error: dbError } = await supabase.from('documents').upsert(docData)
+    const { data: inserted, error: dbError } = await supabase
+      .from('documents')
+      .insert(docData)
+      .select('id')
+      .single()
 
-    setUploading(false)
-
-    if (dbError) {
-      setError(dbError.message)
+    if (dbError || !inserted) {
+      setError(dbError?.message || 'Failed to save document.')
+      setUploading(false)
       return
     }
+
+    // A renewed upload used to insert a second current row. Lists, the
+    // compliance score, and reminder emails all ignore is_superseded, but
+    // nothing ever set it, so the expired copy stayed active.
+    if (filePath) {
+      let previous = supabase
+        .from('documents')
+        .update({ is_superseded: true })
+        .eq('company_id', companyId)
+        .eq('document_type_id', data.document_type_id)
+        .eq('is_superseded', false)
+        .neq('id', inserted.id)
+
+      previous = data.entity_type === 'person'
+        ? previous.eq('person_id', data.entity_id)
+        : previous.eq('vehicle_id', data.entity_id)
+
+      const { error: supersedeError } = await previous
+      if (supersedeError) {
+        setError(`Saved the new document, but the previous version is still active: ${supersedeError.message}`)
+        setUploading(false)
+        return
+      }
+    }
+
+    setUploading(false)
 
     toast.success('Document uploaded successfully.')
     onSuccess()
