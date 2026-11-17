@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { stripe, PLANS, PlanId } from '@/lib/stripe'
 
 export async function POST(request: NextRequest) {
@@ -66,10 +66,17 @@ export async function POST(request: NextRequest) {
     })
     customerId = customer.id
 
-    await supabase
+    // stripe_customer_id is not writable by the signed-in user. The membership
+    // check above already proved the caller is an owner or admin of companyId.
+    const serviceSupabase = await createServiceClient()
+    const { error: saveBillingError } = await serviceSupabase
       .from('companies')
       .update({ stripe_customer_id: customerId })
       .eq('id', companyId)
+
+    if (saveBillingError) {
+      return NextResponse.json({ error: 'Failed to save billing account' }, { status: 500 })
+    }
   }
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
