@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { RemindersContent } from '@/components/reminders/RemindersContent'
 import { Metadata } from 'next'
+import { withLiveDocumentStatuses } from '@/lib/utils'
 
 export const metadata: Metadata = { title: 'Reminders' }
 
@@ -54,7 +55,7 @@ export default async function RemindersPage() {
 
   return (
     <RemindersContent
-      upcoming={(upcoming ?? []) as Record<string, unknown>[]}
+      upcoming={withLiveDocumentStatuses(upcoming ?? []) as Record<string, unknown>[]}
       recentLogs={(recentLogs ?? []) as Record<string, unknown>[]}
       settings={(company?.settings as Record<string, unknown>) || {}}
       companyId={membership.company_id}

@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { DocumentsContent } from '@/components/documents/DocumentsContent'
 import { Metadata } from 'next'
+import { withLiveDocumentStatuses } from '@/lib/utils'
 
 export const metadata: Metadata = { title: 'Documents' }
 
@@ -23,7 +24,7 @@ export default async function DocumentsPage({
 
   if (!membership) redirect('/onboarding')
 
-  let query = supabase
+  const query = supabase
     .from('documents')
     .select(`
       id, status, file_name, file_path, file_size, file_type,
@@ -36,11 +37,12 @@ export default async function DocumentsPage({
     .eq('is_superseded', false)
     .order('expiry_date', { ascending: true, nullsFirst: false })
 
-  if (params.status) {
-    query = query.eq('status', params.status)
-  }
-
+  // Status in the table is frozen at the last write. Filter after recomputing
+  // it, or an expired license still stored as active never matches ?status=expired.
   const { data: documents } = await query
+  const liveDocuments = withLiveDocumentStatuses(documents ?? []).filter((doc) =>
+    !params.status || doc.status === params.status
+  )
 
   const { data: documentTypes } = await supabase
     .from('document_types')
@@ -63,7 +65,7 @@ export default async function DocumentsPage({
 
   return (
     <DocumentsContent
-      documents={(documents ?? []) as Record<string, unknown>[]}
+      documents={liveDocuments as Record<string, unknown>[]}
       documentTypes={(documentTypes ?? []) as Record<string, unknown>[]}
       people={(people ?? []) as Record<string, unknown>[]}
       vehicles={(vehicles ?? []) as Record<string, unknown>[]}

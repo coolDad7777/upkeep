@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import { Metadata } from 'next'
 import { PersonDetailContent } from '@/components/people/PersonDetailContent'
+import { withLiveDocumentStatuses } from '@/lib/utils'
 
 export const metadata: Metadata = { title: 'Person Details' }
 
@@ -61,7 +62,7 @@ export default async function PersonDetailPage({
   return (
     <PersonDetailContent
       person={person as Record<string, unknown>}
-      documents={(documents ?? []) as Record<string, unknown>[]}
+      documents={withLiveDocumentStatuses(documents ?? []) as Record<string, unknown>[]}
       documentTypes={(documentTypes ?? []) as Record<string, unknown>[]}
       documentRequests={(documentRequests ?? []) as Record<string, unknown>[]}
       companyId={membership.company_id}

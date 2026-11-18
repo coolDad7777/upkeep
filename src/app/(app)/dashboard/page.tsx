@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { DashboardContent } from '@/components/dashboard/DashboardContent'
+import { withLiveDocumentStatuses } from '@/lib/utils'
 
 export const metadata = { title: 'Dashboard' }
 
@@ -55,12 +56,14 @@ export default async function DashboardPage() {
       .limit(10),
   ])
 
+  const liveDocuments = withLiveDocumentStatuses(documents ?? [])
+
   const stats = {
-    total: documents?.length ?? 0,
-    active: documents?.filter(d => d.status === 'active').length ?? 0,
-    expiring: documents?.filter(d => d.status === 'expiring_soon').length ?? 0,
-    expired: documents?.filter(d => d.status === 'expired').length ?? 0,
-    missing: documents?.filter(d => d.status === 'missing').length ?? 0,
+    total: liveDocuments.length,
+    active: liveDocuments.filter(d => d.status === 'active').length,
+    expiring: liveDocuments.filter(d => d.status === 'expiring_soon').length,
+    expired: liveDocuments.filter(d => d.status === 'expired').length,
+    missing: liveDocuments.filter(d => d.status === 'missing').length,
     people: people?.length ?? 0,
     vehicles: vehicles?.length ?? 0,
   }
@@ -69,9 +72,9 @@ export default async function DashboardPage() {
     ? Math.round((stats.active / stats.total) * 100)
     : 0
 
-  const urgentDocs = documents?.filter(
+  const urgentDocs = liveDocuments.filter(
     d => ['expiring_soon', 'expired', 'missing'].includes(d.status)
-  ).slice(0, 10) ?? []
+  ).slice(0, 10)
 
   return (
     <DashboardContent

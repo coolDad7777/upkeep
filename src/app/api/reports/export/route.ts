@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { withLiveDocumentStatuses } from '@/lib/utils'
 
 export async function GET(request: NextRequest) {
   const supabase = await createClient()
@@ -28,7 +29,7 @@ export async function GET(request: NextRequest) {
     .eq('is_superseded', false)
 
   const headers = ['ID', 'Document Type', 'Entity', 'Entity Type', 'Status', 'Issue Date', 'Expiry Date', 'File Name', 'Notes', 'Updated At']
-  const rows = (documents || []).map(doc => {
+  const rows = withLiveDocumentStatuses(documents || []).map(doc => {
     const docType = (doc.document_type as unknown) as Record<string, string> | null
     const person = (doc.person as unknown) as Record<string, string> | null
     const vehicle = (doc.vehicle as unknown) as Record<string, string> | null

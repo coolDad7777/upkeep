@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { PeopleContent } from '@/components/people/PeopleContent'
 import { Metadata } from 'next'
+import { withLiveNestedDocuments } from '@/lib/utils'
 
 export const metadata: Metadata = { title: 'People' }
 
@@ -38,8 +39,8 @@ export default async function PeoplePage() {
 
   return (
     <PeopleContent
-      people={(people ?? []) as Record<string, unknown>[]}
-      vehicles={(vehicles ?? []) as Record<string, unknown>[]}
+      people={withLiveNestedDocuments(people ?? []) as Record<string, unknown>[]}
+      vehicles={withLiveNestedDocuments(vehicles ?? []) as Record<string, unknown>[]}
       companyId={membership.company_id}
       role={membership.role}
     />

@@ -5,6 +5,7 @@
 
 import {
   getDocumentStatus,
+  liveDocumentStatus,
   getDaysUntilExpiry,
   calculateComplianceScore,
   validateFile,
@@ -51,6 +52,38 @@ describe('Document status lifecycle', () => {
     expect(getDocumentStatus(daysFromNow(-1), true)).toBe('expired')
     expect(getDocumentStatus(daysFromNow(-30), true)).toBe('expired')
     expect(getDocumentStatus(daysFromNow(-365), true)).toBe('expired')
+  })
+
+  it('recomputes a stored status that has gone stale', () => {
+    const now = new Date(2026, 10, 18, 15, 0, 0)
+
+    expect(liveDocumentStatus({
+      status: 'active',
+      expiry_date: '2026-11-01',
+      file_name: 'license.pdf',
+    }, now)).toBe('expired')
+
+    expect(liveDocumentStatus({
+      status: 'active',
+      expiry_date: '2026-11-28',
+      file_path: 'company/license.pdf',
+    }, now)).toBe('expiring_soon')
+
+    expect(liveDocumentStatus({
+      status: 'expired',
+      expiry_date: '2027-05-01',
+      file_name: 'license.pdf',
+    }, now)).toBe('active')
+
+    expect(liveDocumentStatus({
+      status: 'missing',
+      expiry_date: '2026-11-01',
+    }, now)).toBe('missing')
+
+    expect(liveDocumentStatus({
+      status: 'active',
+      expiry_date: '2026-11-01',
+    }, now)).toBe('expired')
   })
 
   it('getDaysUntilExpiry returns correct values', () => {

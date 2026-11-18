@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { ReportsContent } from '@/components/reports/ReportsContent'
 import { Metadata } from 'next'
-import { getDocumentStatus } from '@/lib/utils'
+import { withLiveDocumentStatuses } from '@/lib/utils'
 
 export const metadata: Metadata = { title: 'Reports' }
 
@@ -39,7 +39,7 @@ export default async function ReportsPage() {
 
   return (
     <ReportsContent
-      documents={(documents ?? []) as Record<string, unknown>[]}
+      documents={withLiveDocumentStatuses(documents ?? []) as Record<string, unknown>[]}
       companyName={company?.name || 'Your Company'}
       companyId={membership.company_id}
     />
