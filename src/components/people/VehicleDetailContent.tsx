@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { UploadDocumentForm } from '@/components/documents/UploadDocumentForm'
 import { cn, formatDate } from '@/lib/utils'
+import { requestDocumentDownload } from '@/lib/download-document'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 
@@ -91,13 +92,12 @@ export function VehicleDetailContent({ vehicle, documents, documentTypes, compan
   }
 
   async function handleDownload(docId: string) {
-    const res = await fetch(`/api/documents/${docId}/download`)
-    if (!res.ok) {
+    try {
+      const url = await requestDocumentDownload(docId)
+      window.open(url, '_blank', 'noopener,noreferrer')
+    } catch {
       toast.error('Could not generate download link')
-      return
     }
-    const { url } = await res.json()
-    window.open(url, '_blank')
   }
 
   return (

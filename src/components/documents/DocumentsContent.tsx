@@ -14,6 +14,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { UploadDocumentForm } from './UploadDocumentForm'
 import { RequestDocumentForm } from './RequestDocumentForm'
 import { cn, formatDate, getStatusColor, getStatusLabel, getDaysUntilExpiry } from '@/lib/utils'
+import { requestDocumentDownload } from '@/lib/download-document'
 import { DocumentStatus } from '@/types'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
@@ -253,7 +254,11 @@ export function DocumentsContent({ documents, documentTypes, people, vehicles, c
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         {!!doc.file_path && (
-                          <DropdownMenuItem onClick={() => window.location.href = `/api/documents/${String(doc.id)}/download`}>
+                          <DropdownMenuItem onClick={() => {
+                            void requestDocumentDownload(String(doc.id))
+                              .then((url) => window.open(url, '_blank', 'noopener,noreferrer'))
+                              .catch(() => toast.error('Could not generate download link'))
+                          }}>
                             <Download className="w-4 h-4 mr-2" /> Download
                           </DropdownMenuItem>
                         )}

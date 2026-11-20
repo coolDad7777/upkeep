@@ -47,5 +47,5 @@ export async function GET(
     return NextResponse.json({ error: 'Failed to generate download link' }, { status: 500 })
   }
 
-  return NextResponse.redirect(signedUrl.signedUrl)
+  return NextResponse.json({ url: signedUrl.signedUrl })
 }
