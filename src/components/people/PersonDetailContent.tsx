@@ -319,7 +319,7 @@ export function PersonDetailContent({ person, documents, documentTypes, document
                   return (
                     <div key={String(req.id)} className="flex items-center justify-between text-sm p-2.5 bg-gray-50 rounded-lg">
                       <span className="text-gray-700">{reqDocType ? String(reqDocType.name) : 'Document'}</span>
-                      <span className={cn('text-xs font-medium', req.status === 'fulfilled' ? 'text-green-700' : 'text-gray-400')}>
+                      <span className={cn('text-xs font-medium', req.status === 'completed' ? 'text-green-700' : 'text-gray-400')}>
                         {String(req.status)}
                       </span>
                     </div>

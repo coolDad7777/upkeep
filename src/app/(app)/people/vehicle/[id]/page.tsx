@@ -47,7 +47,7 @@ export default async function VehicleDetailPage({
     .from('document_types')
     .select('id, name, applies_to, is_required')
     .or(`company_id.eq.${membership.company_id},company_id.is.null`)
-    .in('applies_to', ['vehicle'])
+    .overlaps('applies_to', ['vehicle'])
     .order('sort_order')
 
   return (

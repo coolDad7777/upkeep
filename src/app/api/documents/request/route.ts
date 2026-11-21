@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { Resend } from 'resend'
+import { emailDisplayName, escapeHtml } from '@/lib/document-request'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
@@ -73,29 +74,44 @@ export async function POST(request: NextRequest) {
       requested_by: user.id,
       message: message || null,
     })
-    .select('token')
+    .select('id, token')
     .single()
 
   if (requestError || !docRequest) {
     return NextResponse.json({ error: 'Failed to create request' }, { status: 500 })
   }
 
-  const uploadUrl = `${process.env.NEXT_PUBLIC_APP_URL}/request/${docRequest.token}`
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL
+  if (!appUrl || !process.env.RESEND_API_KEY) {
+    await serviceSupabase.from('document_requests').delete().eq('id', docRequest.id)
+    return NextResponse.json({ error: 'Email is not configured. Contact support.' }, { status: 503 })
+  }
 
-  // Send email
-  if (process.env.RESEND_API_KEY) {
-    await resend.emails.send({
-      from: `${company?.name || 'CrewCompliant'} <noreply@crewcompliant.com>`,
+  const uploadUrl = `${appUrl}/request/${docRequest.token}`
+  const safeMessage = typeof message === 'string' ? message : ''
+
+  let emailSent = false
+  try {
+    const result = await resend.emails.send({
+      from: `${emailDisplayName(company?.name || 'CrewCompliant')} <noreply@crewcompliant.com>`,
       to: person.email,
-      subject: `Document requested: ${docType.name}`,
+      subject: `Document requested: ${docType.name.replace(/[\r\n]/g, ' ').slice(0, 200)}`,
       html: `
-        <p>Hi ${person.first_name},</p>
-        <p>${company?.name || 'Your employer'} is requesting your <strong>${docType.name}</strong>.</p>
-        ${message ? `<p>${message}</p>` : ''}
-        <p><a href="${uploadUrl}" style="background:#1d4ed8;color:white;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;">Upload Document</a></p>
+        <p>Hi ${escapeHtml(person.first_name)},</p>
+        <p>${escapeHtml(company?.name || 'Your employer')} is requesting your <strong>${escapeHtml(docType.name)}</strong>.</p>
+        ${safeMessage ? `<p>${escapeHtml(safeMessage)}</p>` : ''}
+        <p><a href="${escapeHtml(uploadUrl)}" style="background:#1d4ed8;color:white;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;">Upload Document</a></p>
         <p style="font-size:12px;color:#6b7280;">This link expires in 7 days. No account required — just click and upload.</p>
       `,
-    }).catch(console.error)
+    })
+    emailSent = !result.error
+  } catch {
+    emailSent = false
+  }
+
+  if (!emailSent) {
+    await serviceSupabase.from('document_requests').delete().eq('id', docRequest.id)
+    return NextResponse.json({ error: 'Could not send the request email. Try again.' }, { status: 502 })
   }
 
   // Audit log (fire and forget)

@@ -47,15 +47,15 @@ export default async function PersonDetailPage({
     .from('document_types')
     .select('id, name, applies_to, is_required')
     .or(`company_id.eq.${membership.company_id},company_id.is.null`)
-    .in('applies_to', ['person', 'employee', 'subcontractor', 'vendor', person.type])
+    .overlaps('applies_to', ['person'])
     .order('sort_order')
 
   const { data: documentRequests } = await supabase
     .from('document_requests')
-    .select('id, document_type_id, status, sent_at, expires_at, document_type:document_types(name)')
+    .select('id, document_type_id, status, created_at, expires_at, document_type:document_types(name)')
     .eq('person_id', id)
     .eq('company_id', membership.company_id)
-    .order('sent_at', { ascending: false })
+    .order('created_at', { ascending: false })
     .limit(10)
 
   return (
